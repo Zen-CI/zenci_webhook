@@ -235,7 +235,7 @@ class zenciAPI {
       $this->curl->setHeader('Token', $this->getToken());
     }
 
-    $this->curl->get(zenci_API_URI . '/' . $command, $params);
+    $this->curl->get(ZENCI_API_URI . '/' . $command, $params);
     $response = $this->getResponse();
     return $response;
   }
@@ -260,7 +260,7 @@ class zenciAPI {
       $this->curl->setHeader('Token', $this->getToken());
     }
 
-    $this->curl->put(zenci_API_URI . '/' . $command, $params);
+    $this->curl->put(ZENCI_API_URI . '/' . $command, $params);
     $response = $this->getResponse();
     return $response;
   }
@@ -283,7 +283,7 @@ class zenciAPI {
     if ($this->getToken()) {
       $this->curl->setHeader('Token', $this->getToken());
     }
-    $this->curl->post(zenci_API_URI . '/' . $command, $params);
+    $this->curl->post(ZENCI_API_URI . '/' . $command, $params);
     $response = $this->getResponse();
     return $response;
   }
@@ -308,7 +308,7 @@ class zenciAPI {
       $this->curl->setHeader('Token', $this->getToken());
     }
 
-    $this->curl->delete(zenci_API_URI . '/' . $command, $params);
+    $this->curl->delete(ZENCI_API_URI . '/' . $command, $params);
     $response = $this->getResponse();
     return $response;
   }
