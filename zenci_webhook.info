@@ -1,0 +1,7 @@
+name = ZenCI Webhook Integration
+description = ZenCI Webhook integration module.
+backdrop = 1.x
+version = 1.x-1.0
+package = API
+configure = admin/config/system/zenci_webhook
+type = module

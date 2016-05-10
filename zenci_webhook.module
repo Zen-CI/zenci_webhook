@@ -1,0 +1,171 @@
+<?php
+/**
+ * @file
+ * Webhook.
+ *
+ * React on webhook calls.
+ */
+
+// URL ZenCI API.
+define('ZENCI_API_URI', 'http://git.lc/api');
+define('zenci_WEBHOOK_PAYLOAD_PATH', 'webhook/config');
+
+
+/**
+ * Implements hook_config_info().
+ */
+function zenci_webhook_config_info() {
+  $prefixes['zenci_webhook.settings'] = array(
+    'label' => t('Webhook settings'),
+    'group' => t('Configuration'),
+  );
+  return $prefixes;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function zenci_webhook_menu() {
+  $items = array();
+
+  $items['admin/config/system/zenci_webhook'] = array(
+    'title' => 'zenci Webhook settings',
+    'description' => 'Webhook settings to integrate with ZenCI.',
+    'page callback' => 'zenci_webhook_admin_list',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'file' => 'zenci_webhook.pages.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/config/system/zenci_webhook/list'] = array(
+    'title' => 'zenci hooked repositories',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  // Admin settings page.
+  $items['admin/config/system/zenci_webhook/settings'] = array(
+    'title' => 'zenci Webhook settings',
+    'description' => 'Webhook settings to integrate with ZenCI.',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('zenci_webhook_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'zenci_webhook.admin.inc',
+    'weight' => 10,
+  );
+
+  $items['admin/config/system/zenci_webhook/%/delete'] = array(
+    'title' => 'Remove hook',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('zenci_webhook_hook_remove', 4),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'file' => 'zenci_webhook.pages.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['webhook/%'] = array(
+    'type' => MENU_CALLBACK,
+    'title' => 'Webhook',
+    'page callback' => 'zenci_webhook_ajax',
+    'access callback' => TRUE,
+    'page arguments' => array(1),
+    'delivery callback' => 'zenci_webhook_ajax_deliver',
+  );
+
+  return $items;
+}
+
+function zenci_webhook_ajax($method) {
+  $received_json = file_get_contents("php://input", TRUE);
+
+  $headers = apache_request_headers();
+
+  $webhook = db_select('zenci_webhook_repositories', 'gh')
+    ->fields('gh')
+    ->condition('owner', $headers['Owner'])
+    ->condition('repo', $headers['Repo'])
+    ->execute()
+    ->fetchObject();
+
+  if (empty($webhook)) {
+    return MENU_ACCESS_DENIED;
+  }
+
+  if (isset($headers['Signature'])) {
+    list($algorithm, $expected_hash) = explode('=', $headers['Signature'], 2);
+    $actual_hash = hash_hmac($algorithm, $received_json, $webhook->secret);
+    if ($expected_hash !== $actual_hash) {
+      return MENU_ACCESS_DENIED;
+    }
+  }
+
+  $data = backdrop_json_decode($received_json);
+  $answer = module_invoke_all('zenci_webhook', $method, $data);
+
+  return $answer;
+}
+
+function zenci_webhook_ajax_deliver($page_callback_result) {
+  backdrop_add_http_header('Content-Type', 'application/json; charset=utf-8');
+
+  if (is_int($page_callback_result)) {
+    $json = array('error' => TRUE);
+    switch ($page_callback_result) {
+      case MENU_NOT_FOUND:
+        $json['message'] = t('The requested page could not be found.');
+        backdrop_add_http_header('Status', '404 Not Found');
+        break;
+
+      case MENU_ACCESS_DENIED:
+        $json['message'] = t('You are not authorized to access this page.');
+        backdrop_add_http_header('Status', '403 Forbidden');
+        break;
+
+      case MENU_SITE_OFFLINE:
+        $json['message'] = t('@site is currently under maintenance. We should be back shortly. Thank you for your patience.', array('@site' => config_get('system.core', 'site_name')));
+        backdrop_add_http_header('Status', '503 Service unavailable');
+        break;
+    }
+
+  }
+  elseif (is_array($page_callback_result)) {
+    $json = $page_callback_result;
+  }
+  else {
+    $json = array(
+      'error' => TRUE,
+      'message' => t('An unknown error has occurred.'),
+    );
+  }
+  print backdrop_json_encode($json);
+  if (backdrop_get_bootstrap_phase() == BACKDROP_BOOTSTRAP_FULL && (!defined('MAINTENANCE_MODE') || MAINTENANCE_MODE != 'update')) {
+    module_invoke_all('exit');
+  }
+}
+
+function zenci_webhook_get_class($settings) {
+  module_load_include('inc', 'zenci_webhook', 'zenci_webhook.class');
+
+  $api_token = zenci_webhook_get_api_token();
+
+  $githubapi = new zenciAPI();
+  $githubapi->setOwnerName($settings['owner']);
+  $githubapi->setRepoName($settings['repo']);
+  $githubapi->setToken($api_token);
+  return $githubapi;
+}
+
+
+function zenci_webhook_get_api_token() {
+  $config = config('zenci_webhook.settings');
+
+  // Use setting.php values if exists.
+  $api_token = settings_get('zenci_webhook_api_token');
+
+  if (empty($api_token)) {
+    $api_token = $config->get('api_token');
+  }
+  return $api_token;
+}
