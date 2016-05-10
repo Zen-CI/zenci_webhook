@@ -8,7 +8,7 @@
 
 // URL ZenCI API.
 define('ZENCI_API_URI', 'http://git.lc/api');
-define('zenci_WEBHOOK_PAYLOAD_PATH', 'webhook/config');
+define('ZENCI_WEBHOOK_PAYLOAD_PATH', 'webhook/config');
 
 
 /**

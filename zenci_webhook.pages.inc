@@ -100,9 +100,9 @@ function zenci_webhook_hook_submit($form, &$form_state) {
   }
 
   if (empty($hook)) {
-    // Setup GitHub webhook for ZenCI and signup for integration with Gitlc.
+    // Setup GitHub webhook for ZenCI and signup for integration with ZenCI.
     $setup_settings = array(
-      'url' => url(zenci_WEBHOOK_PAYLOAD_PATH, array('absolute' => TRUE)),
+      'url' => url(ZENCI_WEBHOOK_PAYLOAD_PATH, array('absolute' => TRUE)),
       'secret' => $secret,
     );
     $ZenCIAPI->reInitCurl();
@@ -111,7 +111,7 @@ function zenci_webhook_hook_submit($form, &$form_state) {
   else {
     // Signup for integration with Gitlc.
     $setup_settings = array(
-      'url' => url(zenci_WEBHOOK_PAYLOAD_PATH, array('absolute' => TRUE)),
+      'url' => url(ZENCI_WEBHOOK_PAYLOAD_PATH, array('absolute' => TRUE)),
       'secret' => $secret,
     );
     $ZenCIAPI->reInitCurl();
