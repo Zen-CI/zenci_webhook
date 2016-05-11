@@ -43,7 +43,7 @@ function zenci_webhook_schema() {
         'description' => 'zenci deploy public key.',
         'type' => 'blob',
         'size' => 'normal',
-      ),      
+      ),    
     ),
     'indexes' => array(
       'owner_name' => array('owner', 'repo'),
